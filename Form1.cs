@@ -1,150 +1,250 @@
+using Microsoft.Win32;
 using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace TicTacToe
 {
-    partial class TicTacToe : Form //Class name to TicTacToe
+    public partial class TicTacToe : Form
     {
-        private string currentPlayer; //Track current player
-        private int turnCount; //Count
-        private int playerXScore; //Track score player X
-        private int playerOScore; //Track score player O
+        private int turnStat = 1;
+        private int pOneScore = 0;
+        private int pTwoScore = 0;
 
-        
-        private TableLayoutPanel tableLayoutPanel1;
-        private Label scoreLabel;
+        private Dictionary<String, String> activeGame = new Dictionary<string, string>();
 
-        public TicTacToe() //TicTacToe
+        private List<Button> gameButtons = new List<Button>();
+
+        private List<List<String>> gameWins = new List<List<String>>();
+
+        public TicTacToe()
         {
-            InitializeComponent(); //Start U
-            InitializeGame(); //Start game
+            InitializeComponent();
+            BuildLists();
         }
 
-        private void InitializeComponent()
+        #region List building before game starts
+        public void BuildLists()        //list of wins to compare game too & all buttons for logic
         {
-            this.tableLayoutPanel1 = new TableLayoutPanel();
-            this.scoreLabel = new Label();
+            gameWins.Add(new List<String> { "topLeft", "topMid", "topRight" });
+            gameWins.Add(new List<String> { "topLeft", "midLeft", "bottomLeft" });
+            gameWins.Add(new List<String> { "topMid", "midMid", "bottomMid" });
+            gameWins.Add(new List<String> { "topRight", "midRight", "bottomRight" });
+            gameWins.Add(new List<String> { "midLeft", "midMid", "midRight" });
+            gameWins.Add(new List<String> { "bottomLeft", "bottomMid", "bottomRight" });
+            gameWins.Add(new List<String> { "topLeft", "midMid", "bottomRight" });
+            gameWins.Add(new List<String> { "topRight", "midMid", "bottomLeft" });
+            gameButtons.Add(topLeft);
+            gameButtons.Add(topRight);
+            gameButtons.Add(topMid);
+            gameButtons.Add(bottomLeft);
+            gameButtons.Add(bottomMid);
+            gameButtons.Add(bottomRight);
+            gameButtons.Add(midLeft);
+            gameButtons.Add(midMid);
+            gameButtons.Add(midRight);
+        }
+        #endregion
 
-           
-            this.tableLayoutPanel1.ColumnCount = 3; //Table Layout
-            this.tableLayoutPanel1.RowCount = 3;
-            this.tableLayoutPanel1.Dock = DockStyle.Fill;
-
-            // Create and add buttons to the tableLayoutPanel
-            for (int i = 1; i <= 9; i++)
+        public void TakeTurn(Button b)      //To make easy to modify, don't do things directly in this function
+        {
+            if (b.Text == "")
             {
-                Button button = new Button();
-                button.Name = $"button{i}";
-                button.Size = new System.Drawing.Size(60, 60);
-                button.Click += new EventHandler(this.ButtonClick); //Click event
-                this.tableLayoutPanel1.Controls.Add(button, (i - 1) % 3, (i - 1) / 3); //Buttons in 3x3
+                ScoreMe(b);
+                RegisterMove(b);
+                JudgeGame(b);
             }
-
-            this.scoreLabel.Location = new System.Drawing.Point(10, 10); //Adjust position as needed
-            this.scoreLabel.Text = "Player X: 0 | Player O: 0"; //Score display
-
-            this.Controls.Add(this.tableLayoutPanel1); //Table Panel
-            this.Controls.Add(this.scoreLabel);
-            this.Text = "Tic Tac Toe";
-            this.Size = new System.Drawing.Size(300, 300);
         }
 
-        private void InitializeGame() //For reset
+        private void JudgeGame(Button b)
         {
-            currentPlayer = "X"; //Start with player X
-            turnCount = 0; //Reset turn count
-            foreach (Control control in tableLayoutPanel1.Controls)
+            if (activeGame.Count >= 5)       //You can't win ttt before 5 turns
             {
-                if (control is Button button)
+                foreach (List<string> i in gameWins)
                 {
-                    button.Text = string.Empty;
-                    button.Enabled = true; //Buttons
+                    if (i.Contains(b.Name))
+                    {
+                        try
+                        {
+                            string lOne = activeGame[i[0]];
+                            string lTwo = activeGame[i[1]];
+                            string lThree = activeGame[i[2]];
+
+                            if (lOne == lTwo && lOne == lThree) //Comparing possible wins to scored gameButtons isn't fancy but works
+                            {
+                                WinGame();
+                                return; // Exit after a win is found
+                            }
+                        }
+                        catch (Exception e) { Console.WriteLine(e.Message); }
+                    }
                 }
             }
-            UpdateScoreDisplay(); //Update score
+
+            //Check for draw
+            if (activeGame.Count == 9) // All spaces filled and no winner
+            {
+                DrawGame(); // Call the DrawGame method if it's a draw
+            }
         }
 
-        private void CheckForWinner() //Check for a winner
+        private void WinGame()
         {
-            //Rows and columns
-            string[,] buttons = new string[3, 3];
-            int index = 0;
-
-            //Fill buttons
-            foreach (Control control in tableLayoutPanel1.Controls)
+            try
             {
-                if (control is Button button)
+                foreach (Button b in gameButtons)
                 {
-                    buttons[index / 3, index % 3] = button.Text; //Button text
-                    index++;
+                    b.Enabled = false;
+                }
+
+                switch (turnStat)
+                {
+                    case 1:
+                        gameState.Text = "Player Two Wins!!";
+                        pTwoScore++;
+                        pTwoWins.Text = $"Player Two: {pTwoScore}";
+                        break;
+
+                    case 2:
+                        gameState.Text = "Player One Wins!!";
+                        pOneScore++;
+                        pOneWins.Text = $"Player One: {pOneScore}";
+                        break;
+
+                    default:
+                        gameState.Text = "Ready to Tic Tac Toe??";
+                        break;
+                }
+
+                turnStat = 0;
+                startButton.Text = "New Game";
+            }
+            catch (Exception e) { Console.WriteLine(e.Message); }
+        }
+
+        // New method to handle a draw game
+        private void DrawGame()
+        {
+            foreach (Button b in gameButtons)
+            {
+                b.Enabled = false; // Disable all buttons
+            }
+
+            gameState.Text = "It's a Draw!"; // Update game state text
+            turnStat = 0; // Set turn stat to indicate game is over
+            startButton.Text = "New Game"; // Prompt for a new game
+        }
+
+        private void RegisterMove(Button b) //register scored button to dict
+        {
+            activeGame.Add(b.Name, b.Text);
+        }
+
+        private void ScoreMe(Button b) //score button - add check against replaying space
+        {
+            try
+            {
+                switch (turnStat)
+                {
+                    case 1:
+                        b.Text = "X";
+                        b.BackColor = Color.Blue;
+                        turnStat = 2;
+                        b.Enabled = false;
+                        gameState.Text = "Player Two's Turn";
+                        break;
+
+                    case 2:
+                        b.Text = "O";
+                        b.BackColor = Color.Red;
+                        turnStat = 1;
+                        b.Enabled = false;
+                        gameState.Text = "Player One's Turn";
+                        break;
+
+                    default:
+                        b.Text = "";
+                        break;
                 }
             }
 
-            //Check win
-            if ((buttons[0, 0] == currentPlayer && buttons[0, 1] == currentPlayer && buttons[0, 2] == currentPlayer) ||
-                (buttons[1, 0] == currentPlayer && buttons[1, 1] == currentPlayer && buttons[1, 2] == currentPlayer) ||
-                (buttons[2, 0] == currentPlayer && buttons[2, 1] == currentPlayer && buttons[2, 2] == currentPlayer) ||
-                (buttons[0, 0] == currentPlayer && buttons[1, 0] == currentPlayer && buttons[2, 0] == currentPlayer) ||
-                (buttons[0, 1] == currentPlayer && buttons[1, 1] == currentPlayer && buttons[2, 1] == currentPlayer) ||
-                (buttons[0, 2] == currentPlayer && buttons[1, 2] == currentPlayer && buttons[2, 2] == currentPlayer) ||
-                (buttons[0, 0] == currentPlayer && buttons[1, 1] == currentPlayer && buttons[2, 2] == currentPlayer) ||
-                (buttons[0, 2] == currentPlayer && buttons[1, 1] == currentPlayer && buttons[2, 0] == currentPlayer))
-            {
-                MessageBox.Show($"Player {currentPlayer} Wins"); //Show winner
-                UpdateScore(); //Update score 
-                ResetGame(); //Reset the game
-            }
-            else if (turnCount == 9) //Check for a draw
-            {
-                MessageBox.Show("It's a draw!"); //Show draw message
-                ResetGame(); //Reset the game after a draw
-            }
+            catch (Exception e) { Console.WriteLine(e.Message); }
+
         }
 
-        private void UpdateScore() //Update scores based on the winner
+        private void StartGame()
         {
-            if (currentPlayer == "X") //Check if player X wins
+            try
             {
-                playerXScore++; //Increment player X score
-            }
-            else //Player O wins
-            {
-                playerOScore++; //Increment player O score
-            }
-            UpdateScoreDisplay(); //Update score display after scoring
-        }
+                startButton.Text = "Restart Game";
+                gameState.Text = "Player One's Turn";
+                turnStat = 1;
+                activeGame.Clear();
 
-        private void UpdateScoreDisplay() //Update the score 
-        {
-            scoreLabel.Text = $"Player X: {playerXScore} | Player O: {playerOScore}"; //Display score
-        }
-
-        private void ResetGame() //Reset the game 
-        {
-            InitializeGame();
-        }
-
-        private void TogglePlayer() //Current player
-        {
-            currentPlayer = (currentPlayer == "X") ? "O" : "X"; //Switch players
-        }
-
-        private void ButtonClick(object sender, EventArgs e) //Button click logic
-        {
-            MessageBox.Show("Button clicked!"); // Debugging message
-
-            Button button = sender as Button; //Green line might have a problem
-            if (button != null)
-            {
-                button.Text = currentPlayer; //Set button text to current player
-                button.Enabled = false; //Disable the button after it's clicked
-                turnCount++; //increase turn count here
-                CheckForWinner(); //Check for a winner or draw
-                if (turnCount < 9) //Toggle player if game is not over
+                foreach (Button b in gameButtons)
                 {
-                    TogglePlayer(); //Switch players
+                    b.Text = "";
+                    b.Enabled = true;
+                    b.BackColor = Color.White;
                 }
             }
+            catch (Exception e) { Console.WriteLine(e.Message); }
+        }
+
+        private void TopLeft_Click(object sender, EventArgs e)
+        {
+            TakeTurn(topLeft);
+        }
+
+        private void TopMid_Click(object sender, EventArgs e)
+        {
+            TakeTurn(topMid);
+        }
+
+        private void TopRight_Click(object sender, EventArgs e)
+        {
+            TakeTurn(topRight);
+        }
+
+        private void MidLeft_Click(object sender, EventArgs e)
+        {
+            TakeTurn(midLeft);
+        }
+
+        private void MidMid_Click(object sender, EventArgs e)
+        {
+            TakeTurn(midMid);
+        }
+
+        private void MidRight_Click(object sender, EventArgs e)
+        {
+            TakeTurn(midRight);
+        }
+
+        private void BottomLeft_Click(object sender, EventArgs e)
+        {
+            TakeTurn(bottomLeft);
+        }
+
+        private void BottomMid_Click(object sender, EventArgs e)
+        {
+            TakeTurn(bottomMid);
+        }
+
+        private void BottomRight_Click(object sender, EventArgs e)
+        {
+            TakeTurn(bottomRight);
+        }
+
+        private void StartButton_Click(object sender, EventArgs e)
+        {
+            StartGame();
         }
     }
 }
